@@ -20,8 +20,17 @@ import { ProductDetailView } from './components/ProductDetailView';
 import { AdminDashboard } from './components/AdminDashboard';
 import { AboutPortalPage } from './components/AboutPortalPage';
 
-function parseHashRoute(hash: string): AppRoute {
-  const cleaned = hash.replace(/^#/, '') || '/';
+function normalizeRoutePath(raw: string): string {
+  const withoutHash = raw.replace(/^#/, '');
+  if (!withoutHash) return '/';
+  return withoutHash.startsWith('/') ? withoutHash : `/${withoutHash}`;
+}
+
+function parseRoute(pathname: string, hash: string): AppRoute {
+  const hashTarget = hash.replace(/^#/, '');
+  const raw = hashTarget && hashTarget !== '/' ? hashTarget : pathname;
+  const cleaned = normalizeRoutePath(raw);
+
   if (cleaned.startsWith('/cosmeticos/detalhes/')) {
     const id = decodeURIComponent(
       cleaned.replace('/cosmeticos/detalhes/', '').replace(/\/+$/, '')
@@ -42,7 +51,7 @@ function parseHashRoute(hash: string): AppRoute {
 
 export default function App() {
   const [route, setRoute] = useState<AppRoute>(() =>
-    parseHashRoute(window.location.hash)
+    parseRoute(window.location.pathname, window.location.hash)
   );
   const [highContrast, setHighContrast] = useState(false);
 
@@ -65,22 +74,25 @@ export default function App() {
     'productName' | 'registrationNumber' | 'snbNumber' | 'processNumber' | null
   >(null);
 
-  const navigate = useCallback((hash: string) => {
-    const normalized = hash.startsWith('#') ? hash : `#${hash}`;
-    if (window.location.hash !== normalized) {
-      window.location.hash = normalized;
-    } else {
-      setRoute(parseHashRoute(normalized));
+  const navigate = useCallback((target: string) => {
+    const nextPath = normalizeRoutePath(target);
+    if (window.location.pathname !== nextPath || window.location.hash) {
+      window.history.pushState(null, '', nextPath);
     }
+    setRoute(parseRoute(nextPath, ''));
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
   useEffect(() => {
-    const onHashChange = () => {
-      setRoute(parseHashRoute(window.location.hash));
+    const syncRoute = () => {
+      setRoute(parseRoute(window.location.pathname, window.location.hash));
     };
-    window.addEventListener('hashchange', onHashChange);
-    return () => window.removeEventListener('hashchange', onHashChange);
+    window.addEventListener('popstate', syncRoute);
+    window.addEventListener('hashchange', syncRoute);
+    return () => {
+      window.removeEventListener('popstate', syncRoute);
+      window.removeEventListener('hashchange', syncRoute);
+    };
   }, []);
 
   useEffect(() => {
