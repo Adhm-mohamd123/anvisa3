@@ -85,7 +85,71 @@ export function normalizeTextForSearch(value: string): string {
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
-    .trim();
+    .trim()
+    .replace(/\s+/g, ' ');
+}
+
+export type StrictSearchField =
+  | 'productName'
+  | 'registrationNumber'
+  | 'snbNumber'
+  | 'manufacturerName'
+  | 'processNumber'
+  | 'expirationFrom'
+  | 'expirationTo';
+
+export interface StrictSearchValidation {
+  isValid: boolean;
+  errors: Partial<Record<StrictSearchField, string>>;
+  summary: string | null;
+}
+
+export function validateStrictSearchCriteria(
+  criteria: SearchCriteria
+): StrictSearchValidation {
+  const errors: Partial<Record<StrictSearchField, string>> = {};
+
+  if (!normalizeTextForSearch(criteria.productName)) {
+    errors.productName = 'Informe o nome completo do produto.';
+  }
+  if (!normalizeCodeForSearch(criteria.registrationNumber)) {
+    errors.registrationNumber = 'Informe o número completo do registro.';
+  }
+  if (!normalizeCodeForSearch(criteria.snbNumber)) {
+    errors.snbNumber = 'Informe o número SNB / CNPJ completo.';
+  }
+  if (!normalizeTextForSearch(criteria.manufacturerName)) {
+    errors.manufacturerName = 'Informe o nome completo da empresa fabricante.';
+  }
+  if (!normalizeCodeForSearch(criteria.processNumber)) {
+    errors.processNumber = 'Informe o número completo do processo.';
+  }
+
+  const expFrom = normalizeDateInput(criteria.expirationFrom);
+  const expTo = normalizeDateInput(criteria.expirationTo);
+
+  if (!expFrom || !FIELD_BOUNDS.dateRegex.test(expFrom)) {
+    errors.expirationFrom = 'Informe a data inicial válida.';
+  }
+  if (!expTo || !FIELD_BOUNDS.dateRegex.test(expTo)) {
+    errors.expirationTo = 'Informe a data final válida.';
+  }
+  if (
+    !errors.expirationFrom &&
+    !errors.expirationTo &&
+    expFrom > expTo
+  ) {
+    errors.expirationTo = 'A data final deve ser igual ou posterior à data inicial.';
+  }
+
+  const isValid = Object.keys(errors).length === 0;
+  return {
+    isValid,
+    errors,
+    summary: isValid
+      ? null
+      : 'Para consultar um produto, preencha todos os campos obrigatórios com os dados completos.',
+  };
 }
 
 export function normalizeCodeForSearch(value: string): string {

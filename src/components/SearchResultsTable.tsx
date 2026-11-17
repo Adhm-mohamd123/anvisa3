@@ -71,7 +71,7 @@ export const SearchResultsTable: React.FC<SearchResultsTableProps> = ({
           </h3>
           <p className="text-[13px] text-[#555555] max-w-xl mx-auto mt-1.5 leading-relaxed">
             {hasSearched
-              ? 'Este produto não consta como registrado ou validado na base verificada pela administração. Verifique o nome do produto, número de registro, código SNB ou número do processo.'
+              ? 'Este produto não consta na base verificada ou algum dos dados informados não confere integralmente. Verifique se o nome completo do produto, número do registro, SNB / CNPJ, empresa fabricante, número do processo e período de vencimento estão exatos.'
               : 'Este portal exibe exclusivamente produtos inseridos e verificados pela administração. Acesse o Painel Administrativo para cadastrar os primeiros registros.'}
           </p>
           <div className="mt-4 flex flex-wrap items-center justify-center gap-2.5">

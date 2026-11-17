@@ -19,6 +19,7 @@ import {
   normalizeDateInput,
   normalizeTextForSearch,
   validateCosmeticInput,
+  validateStrictSearchCriteria,
   type CosmeticProduct,
   type CosmeticProductInput,
   type RegistrationStatus,
@@ -293,13 +294,15 @@ export function filterCosmetics(
   products: CosmeticProduct[],
   criteria: SearchCriteria
 ): CosmeticProduct[] {
+  const validation = validateStrictSearchCriteria(criteria);
+  if (!validation.isValid) {
+    return [];
+  }
+
   const pName = normalizeTextForSearch(criteria.productName);
-  const regRaw = criteria.registrationNumber.trim().toLowerCase();
   const regNorm = normalizeCodeForSearch(criteria.registrationNumber);
-  const snbRaw = criteria.snbNumber.trim().toLowerCase();
   const snbNorm = normalizeCodeForSearch(criteria.snbNumber);
   const mfg = normalizeTextForSearch(criteria.manufacturerName);
-  const procRaw = criteria.processNumber.trim().toLowerCase();
   const procNorm = normalizeCodeForSearch(criteria.processNumber);
   const expFrom = normalizeDateInput(criteria.expirationFrom);
   const expTo = normalizeDateInput(criteria.expirationTo);
@@ -307,40 +310,25 @@ export function filterCosmetics(
   return products.filter((item) => {
     if (!item.verifiedByAdmin) return false;
 
-    if (pName && !normalizeTextForSearch(item.productName).includes(pName)) return false;
+    if (normalizeTextForSearch(item.productName) !== pName) return false;
 
-    if (regRaw) {
-      const itemRegRaw = item.registrationNumber.toLowerCase();
-      const itemRegNorm = normalizeCodeForSearch(item.registrationNumber);
-      if (!itemRegRaw.includes(regRaw) && (!regNorm || !itemRegNorm.includes(regNorm))) {
-        return false;
-      }
-    }
+    const itemRegNorm = normalizeCodeForSearch(item.registrationNumber);
+    if (!itemRegNorm || itemRegNorm !== regNorm) return false;
 
-    if (snbRaw) {
-      const itemSnbRaw = item.snbNumber.toLowerCase();
-      const itemSnbNorm = normalizeCodeForSearch(item.snbNumber);
-      if (!itemSnbRaw.includes(snbRaw) && (!snbNorm || !itemSnbNorm.includes(snbNorm))) {
-        return false;
-      }
-    }
+    const itemSnbNorm = normalizeCodeForSearch(item.snbNumber);
+    if (!itemSnbNorm || itemSnbNorm !== snbNorm) return false;
 
-    if (mfg && !normalizeTextForSearch(item.manufacturerName).includes(mfg)) return false;
+    if (normalizeTextForSearch(item.manufacturerName) !== mfg) return false;
 
-    if (procRaw) {
-      const itemProcRaw = item.processNumber.toLowerCase();
-      const itemProcNorm = normalizeCodeForSearch(item.processNumber);
-      if (!itemProcRaw.includes(procRaw) && (!procNorm || !itemProcNorm.includes(procNorm))) {
-        return false;
-      }
-    }
+    const itemProcNorm = normalizeCodeForSearch(item.processNumber);
+    if (!itemProcNorm || itemProcNorm !== procNorm) return false;
 
-    if (expFrom && item.expirationDate < expFrom) return false;
-    if (expTo && item.expirationDate > expTo) return false;
+    const itemExpDate = normalizeDateInput(item.expirationDate);
+    if (!itemExpDate || itemExpDate < expFrom || itemExpDate > expTo) return false;
 
     if (criteria.statusFilter === 'expiring_soon') {
       if (item.status !== 'valid') return false;
-      const target = new Date(`${item.expirationDate}T00:00:00`);
+      const target = new Date(`${itemExpDate}T00:00:00`);
       const now = new Date();
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       const diffDays = Math.ceil((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));

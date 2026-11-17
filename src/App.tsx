@@ -64,6 +64,7 @@ export default function App() {
   const [draftCriteria, setDraftCriteria] = useState<SearchCriteria>(
     EMPTY_SEARCH_CRITERIA
   );
+  const [searchNotFound, setSearchNotFound] = useState(false);
   const [focusField, setFocusField] = useState<
     'productName' | 'registrationNumber' | 'snbNumber' | 'processNumber' | null
   >(null);
@@ -129,26 +130,18 @@ export default function App() {
 
   const handleSubmitSearch = (override?: SearchCriteria) => {
     const active = override ?? draftCriteria;
-    const hasFilter = Boolean(
-      active.productName.trim() ||
-        active.registrationNumber.trim() ||
-        active.snbNumber.trim() ||
-        active.manufacturerName.trim() ||
-        active.processNumber.trim() ||
-        active.expirationFrom.trim() ||
-        active.expirationTo.trim() ||
-        active.statusFilter !== 'all'
-    );
-    if (!hasFilter) return;
-
     const matches = filterCosmetics(products, active);
     if (matches.length > 0) {
+      setSearchNotFound(false);
       navigate(`#/cosmeticos/detalhes/${encodeURIComponent(matches[0].id)}`);
+    } else {
+      setSearchNotFound(true);
     }
   };
 
   const handleResetSearch = () => {
     setDraftCriteria(EMPTY_SEARCH_CRITERIA);
+    setSearchNotFound(false);
     setFocusField(null);
   };
 
@@ -160,6 +153,7 @@ export default function App() {
       statusFilter: status,
     };
     setDraftCriteria(next);
+    setSearchNotFound(false);
     navigate('#/cosmeticos/registrados/');
   };
 
@@ -167,6 +161,7 @@ export default function App() {
     field: 'productName' | 'registrationNumber' | 'snbNumber' | 'processNumber'
   ) => {
     setFocusField(field);
+    setSearchNotFound(false);
     navigate('#/cosmeticos/registrados/');
   };
 
@@ -268,9 +263,15 @@ export default function App() {
           <div>
             <CosmeticsSearchPanel
               criteria={draftCriteria}
-              onChangeCriteria={setDraftCriteria}
+              onChangeCriteria={(next) => {
+                setSearchNotFound(false);
+                setDraftCriteria(next);
+              }}
               onSubmitSearch={handleSubmitSearch}
               onResetSearch={handleResetSearch}
+              onClearResults={() => setSearchNotFound(false)}
+              searchNotFound={searchNotFound}
+              loadingProducts={loadingProducts}
               allProducts={products}
               focusField={focusField}
             />
