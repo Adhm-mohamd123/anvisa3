@@ -235,7 +235,7 @@ const TileButton: React.FC<{ tile: TileItem }> = ({ tile }) => (
     className="group flex flex-col border border-[#dcdcdc] rounded-[2px] overflow-hidden text-center transition-colors cursor-pointer bg-[#fafafa] hover:border-[#1b5ca7] hc-surface"
   >
     <div className="flex items-center justify-center h-[84px] px-3 bg-[#fafafa] group-hover:bg-[#f2f6fb] transition-colors">
-      <div className="transition-transform duration-150 group-hover:scale-105">
+      <div className="scale-[1.28] transition-transform duration-150 group-hover:scale-[1.35]">
         {tile.icon}
       </div>
     </div>

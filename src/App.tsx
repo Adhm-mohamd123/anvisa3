@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { onAuthStateChanged, type User } from 'firebase/auth';
 import { auth } from './lib/firebase';
 import {
@@ -14,7 +14,6 @@ import {
 import { PortalHeader, type AppRoute } from './components/PortalHeader';
 import { PortalFooter } from './components/PortalFooter';
 import { CosmeticsSearchPanel } from './components/CosmeticsSearchPanel';
-import { SearchResultsTable } from './components/SearchResultsTable';
 import { PortalCategoryGrid } from './components/PortalCategoryGrid';
 import { ProductDetailView } from './components/ProductDetailView';
 import { AdminDashboard } from './components/AdminDashboard';
@@ -61,15 +60,10 @@ export default function App() {
 
   const [products, setProducts] = useState<CosmeticProduct[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
-  const [productsError, setProductsError] = useState<string | null>(null);
 
   const [draftCriteria, setDraftCriteria] = useState<SearchCriteria>(
     EMPTY_SEARCH_CRITERIA
   );
-  const [appliedCriteria, setAppliedCriteria] = useState<SearchCriteria>(
-    EMPTY_SEARCH_CRITERIA
-  );
-  const [hasSearched, setHasSearched] = useState(false);
   const [focusField, setFocusField] = useState<
     'productName' | 'registrationNumber' | 'snbNumber' | 'processNumber' | null
   >(null);
@@ -119,16 +113,11 @@ export default function App() {
 
   const loadProducts = useCallback(async () => {
     setLoadingProducts(true);
-    setProductsError(null);
     try {
       const data = await fetchVerifiedCosmetics();
       setProducts(data);
-    } catch (err) {
-      setProductsError(
-        err instanceof Error
-          ? err.message
-          : 'Erro ao carregar os registros verificados.'
-      );
+    } catch {
+      // ignore load failure on public view
     } finally {
       setLoadingProducts(false);
     }
@@ -138,21 +127,28 @@ export default function App() {
     void loadProducts();
   }, [loadProducts]);
 
-  const searchResults = useMemo(
-    () => filterCosmetics(products, appliedCriteria),
-    [products, appliedCriteria]
-  );
-
   const handleSubmitSearch = (override?: SearchCriteria) => {
     const active = override ?? draftCriteria;
-    setAppliedCriteria(active);
-    setHasSearched(true);
+    const hasFilter = Boolean(
+      active.productName.trim() ||
+        active.registrationNumber.trim() ||
+        active.snbNumber.trim() ||
+        active.manufacturerName.trim() ||
+        active.processNumber.trim() ||
+        active.expirationFrom.trim() ||
+        active.expirationTo.trim() ||
+        active.statusFilter !== 'all'
+    );
+    if (!hasFilter) return;
+
+    const matches = filterCosmetics(products, active);
+    if (matches.length > 0) {
+      navigate(`#/cosmeticos/detalhes/${encodeURIComponent(matches[0].id)}`);
+    }
   };
 
   const handleResetSearch = () => {
     setDraftCriteria(EMPTY_SEARCH_CRITERIA);
-    setAppliedCriteria(EMPTY_SEARCH_CRITERIA);
-    setHasSearched(false);
     setFocusField(null);
   };
 
@@ -164,8 +160,6 @@ export default function App() {
       statusFilter: status,
     };
     setDraftCriteria(next);
-    setAppliedCriteria(next);
-    setHasSearched(true);
     navigate('#/cosmeticos/registrados/');
   };
 
@@ -269,7 +263,7 @@ export default function App() {
           />
         )}
 
-        {/* Dedicated Cosmetics Search View (#/cosmeticos/registrados/) */}
+        {/* Dedicated Cosmetics Search View (/cosmeticos/registrados/) */}
         {route.name === 'search' && (
           <div>
             <CosmeticsSearchPanel
@@ -280,20 +274,6 @@ export default function App() {
               allProducts={products}
               focusField={focusField}
             />
-
-            {hasSearched && (
-              <SearchResultsTable
-                results={searchResults}
-                loading={loadingProducts}
-                error={productsError}
-                hasSearched={hasSearched}
-                onSelectProduct={(id) =>
-                  navigate(`#/cosmeticos/detalhes/${encodeURIComponent(id)}`)
-                }
-                onResetSearch={handleResetSearch}
-                onGoAdmin={() => navigate('#/admin')}
-              />
-            )}
           </div>
         )}
 
